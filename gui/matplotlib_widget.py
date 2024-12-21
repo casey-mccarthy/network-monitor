@@ -34,12 +34,7 @@ class DynamicNetworkMap(QWidget):
         super().resizeEvent(event)  # Call the base class implementation
 
     def draw_dynamic_map(self):
-        # Define colors for each device type
-        colors = {
-            "router": "red",
-            "switch": "blue",
-            "pc": "green",
-        }
+
 
         G = nx.Graph()
 
