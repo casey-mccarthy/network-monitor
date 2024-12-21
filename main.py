@@ -21,6 +21,9 @@ def main(file_path: str):
     window = NetworkMonitorApp(nodes)
     window.show()
 
+    # Start node tasks after the event loop is running
+    loop.call_soon(window.start_node_tasks)
+
     with loop:
         loop.run_forever()
 
