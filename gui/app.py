@@ -7,15 +7,15 @@ from network.checker import ping, read_node_file
 from network.logger import setup_node_logging
 from network.node import Node
 from network.mapper import draw_network_topology
-from gui.matplotlib_widget import StaticNetworkMap
+from gui.matplotlib_widget import DynamicNetworkMap
 
 class NetworkMonitorApp(QMainWindow):
     def __init__(self, nodes: list[Node], file_path: str):
         super().__init__()
         self.setWindowTitle("Network Monitor")
-        self.nodes = sorted(nodes, key=lambda node: node.ip)  # Sort nodes by IP address
+        self.nodes = sorted(nodes, key=lambda node: node.ip)
         self.node_status = {node.ip: ("Checking...", "-") for node in nodes}
-        self.previous_status = {node.ip: None for node in nodes}  # Track previous status
+        self.previous_status = {node.ip: None for node in nodes}
         self.node_loggers = {node.ip: setup_node_logging(node.ip) for node in nodes}
         self.file_path = file_path
 
@@ -32,7 +32,7 @@ class NetworkMonitorApp(QMainWindow):
         self.nodes_button.setCheckable(True)
         self.history_button.setCheckable(True)
         self.map_button.setCheckable(True)
-        self.nodes_button.setChecked(True)  # Default to nodes view
+        self.nodes_button.setChecked(True)
         self.update_button_styles()
         self.nodes_button.clicked.connect(self.show_nodes)
         self.history_button.clicked.connect(self.show_history)
@@ -49,7 +49,7 @@ class NetworkMonitorApp(QMainWindow):
         # Create the node status table
         self.table_widget = QTableWidget(len(nodes), 3)
         self.table_widget.setHorizontalHeaderLabels(["Node", "Status", "Last Checked"])
-        self.table_widget.setSortingEnabled(False)  # Disable sorting
+        self.table_widget.setSortingEnabled(False)
 
         # Hide row and column headers
         self.table_widget.verticalHeader().setVisible(False)
@@ -58,30 +58,28 @@ class NetworkMonitorApp(QMainWindow):
         # Initialize the table
         for row, node in enumerate(self.nodes):
             node_item = QTableWidgetItem(node.ip)
-            node_item.setFlags(node_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
+            node_item.setFlags(node_item.flags() & ~Qt.ItemIsEditable)
             self.table_widget.setItem(row, 0, node_item)
 
             status_item = QTableWidgetItem("Checking...")
-            status_item.setForeground(QColor("yellow"))  # Initial status color
-            status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
+            status_item.setForeground(QColor("yellow"))
+            status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)
             self.table_widget.setItem(row, 1, status_item)
 
             timestamp_item = QTableWidgetItem("-")
-            timestamp_item.setFlags(timestamp_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
+            timestamp_item.setFlags(timestamp_item.flags() & ~Qt.ItemIsEditable)
             self.table_widget.setItem(row, 2, timestamp_item)
 
-        # Add the table widget to the stacked widget
         self.stacked_widget.addWidget(self.table_widget)
 
         # Create a placeholder for the history view
         self.history_list = QListWidget()
         self.stacked_widget.addWidget(self.history_list)
 
-        # Add the StaticNetworkMap widget for the network map
-        self.map_widget = StaticNetworkMap()
+        # Add the DynamicNetworkMap widget for the network map
+        self.map_widget = DynamicNetworkMap(self.file_path)
         self.stacked_widget.addWidget(self.map_widget)
 
-        # Add the stacked widget to the main layout
         main_layout.addWidget(self.stacked_widget)
 
         # Footer with file path and change button
@@ -93,22 +91,18 @@ class NetworkMonitorApp(QMainWindow):
         change_file_button.clicked.connect(self.change_file)
         footer_layout.addWidget(self.file_label)
         footer_layout.addWidget(change_file_button)
-
         footer.setLayout(footer_layout)
         main_layout.addWidget(footer)
 
-        # Set the main layout
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
-        # Set up a timer to update the dashboard
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_dashboard)
-        self.timer.start(1000)  # Update every 1 second
+        self.timer.start(1000)
 
     def show_nodes(self):
-        """Show the nodes view."""
         self.stacked_widget.setCurrentWidget(self.table_widget)
         self.nodes_button.setChecked(True)
         self.history_button.setChecked(False)
@@ -116,7 +110,6 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def show_history(self):
-        """Show the history view."""
         self.stacked_widget.setCurrentWidget(self.history_list)
         self.nodes_button.setChecked(False)
         self.history_button.setChecked(True)
@@ -124,7 +117,6 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def show_map(self):
-        """Show the network topology map."""
         self.stacked_widget.setCurrentWidget(self.map_widget)
         self.nodes_button.setChecked(False)
         self.history_button.setChecked(False)
@@ -132,7 +124,6 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def update_button_styles(self):
-        """Update the styles of the header buttons to indicate the active view."""
         active_style = "background-color: lightblue; font-weight: bold;"
         inactive_style = "background-color: none; font-weight: normal;"
         self.nodes_button.setStyleSheet(active_style if self.nodes_button.isChecked() else inactive_style)

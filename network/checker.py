@@ -35,7 +35,10 @@ def read_node_file(file_path: str) -> list[Node]:
                 parts = line.split(',')
                 if len(parts) == 2:
                     ip, device_type = parts
-                    nodes[ip] = Node(ip, device_type)
+                    if device_type.lower() in ["router", "switch", "pc"]:
+                        nodes[ip] = Node(ip, device_type)
+                    else:
+                        connections.append(parts)
                 elif len(parts) == 2:
                     connections.append(parts)
 

@@ -1,42 +1,46 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import networkx as nx
 import PIL
+from network.checker import read_node_file
+import matplotlib.pyplot as plt
 
-class StaticNetworkMap(QWidget):
-    def __init__(self, parent=None):
+class DynamicNetworkMap(QWidget):
+    def __init__(self, file_path: str, parent=None):
         super().__init__(parent)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
+        
+        # Add the navigation toolbar
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
         layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)  # Add the toolbar to the layout
         layout.addWidget(self.canvas)
         self.setLayout(layout)
-        self.draw_static_map()
+        self.file_path = file_path
+        self.draw_dynamic_map()
 
-    def draw_static_map(self):
-        icons = {
-            "router": "icons/router_black_144x144.png",
-            "switch": "icons/switch_black_144x144.png",
-            "PC": "icons/computer_black_144x144.png",
+    def draw_dynamic_map(self):
+        # Define colors for each device type
+        colors = {
+            "router": "red",
+            "switch": "blue",
+            "pc": "green",
         }
 
-        images = {k: PIL.Image.open(fname) for k, fname in icons.items()}
-
+        nodes = read_node_file(self.file_path)
         G = nx.Graph()
 
-        G.add_node("router", image=images["router"])
-        for i in range(1, 4):
-            G.add_node(f"switch_{i}", image=images["switch"])
-            for j in range(1, 4):
-                G.add_node("PC_" + str(i) + "_" + str(j), image=images["PC"])
+        for node in nodes:
+            device_type = node.device_type.lower()
+            G.add_node(node.ip, device_type=device_type)
 
-        G.add_edge("router", "switch_1")
-        G.add_edge("router", "switch_2")
-        G.add_edge("router", "switch_3")
-        for u in range(1, 4):
-            for v in range(1, 4):
-                G.add_edge("switch_" + str(u), "PC_" + str(u) + "_" + str(v))
+        for node in nodes:
+            for connected_node in node.connections:
+                G.add_edge(node.ip, connected_node.ip)
 
         pos = nx.spring_layout(G, seed=1734289230)
         ax = self.figure.add_subplot(111)
@@ -52,17 +56,30 @@ class StaticNetworkMap(QWidget):
             min_target_margin=15,
         )
 
-        tr_figure = ax.transData.transform
-        tr_axes = self.figure.transFigure.inverted().transform
-
-        icon_size = (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.025
-        icon_center = icon_size / 2.0
-
         for n in G.nodes:
-            xf, yf = tr_figure(pos[n])
-            xa, ya = tr_axes((xf, yf))
-            a = self.figure.add_axes([xa - icon_center, ya - icon_center, icon_size, icon_size])
-            a.imshow(G.nodes[n]["image"])
-            a.axis("off")
+            x, y = pos[n]
+            device_type = G.nodes[n]["device_type"]
+            color = colors.get(device_type, "gray")
 
-        self.canvas.draw() 
+            # Determine online status (for demonstration, assume all are online)
+            is_online = True  # Replace with actual status check
+
+            # Draw a rectangle (box) for each node
+            rect = plt.Rectangle(
+                (x - 0.05, y - 0.05), 0.1, 0.1, color=color, transform=ax.transData
+            )
+            ax.add_patch(rect)
+
+            # Add a glow effect
+            glow_color = "green" if is_online else "red"
+            glow_rect = plt.Rectangle(
+                (x - 0.055, y - 0.055), 0.11, 0.11, color=glow_color, alpha=0.3, transform=ax.transData
+            )
+            ax.add_patch(glow_rect)
+
+            # Add the IP address inside the box
+            ax.text(
+                x, y, n, fontsize=6, ha='center', va='center', transform=ax.transData
+            )
+
+        self.canvas.draw()
