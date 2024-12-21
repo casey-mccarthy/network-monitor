@@ -1,44 +1,52 @@
 import time
 import asyncio
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QLabel, QFrame, QPushButton, QTableWidget, QTableWidgetItem, QStackedWidget, QListWidget
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QStackedWidget, QListWidget, QFileDialog
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
-from network.checker import ping
+from network.checker import ping, read_node_file
 from network.logger import setup_node_logging
 
 class NetworkMonitorApp(QMainWindow):
-    def __init__(self, nodes: list[str]):
+    def __init__(self, nodes: list[str], file_path: str):
         super().__init__()
         self.setWindowTitle("Network Monitor")
         self.nodes = sorted(nodes)  # Sort nodes by IP address
         self.node_status = {node: ("Checking...", "-") for node in nodes}
+        self.previous_status = {node: None for node in nodes}  # Track previous status
         self.node_loggers = {node: setup_node_logging(node) for node in nodes}
+        self.file_path = file_path
 
-        # Create the main splitter
-        splitter = QSplitter(Qt.Horizontal)
+        # Main layout
+        main_layout = QVBoxLayout()
 
-        # Create the menu bar (left 1/3)
-        menu_bar = QFrame()
-        menu_bar.setFrameShape(QFrame.StyledPanel)
-        menu_layout = QVBoxLayout()
-        menu_layout.setAlignment(Qt.AlignTop)  # Align widgets to the top
-        menu_layout.setContentsMargins(10, 10, 10, 10)  # Add padding around the layout
-        menu_bar.setLayout(menu_layout)
-        splitter.addWidget(menu_bar)
+        # Header with menu buttons
+        header = QWidget()
+        header_layout = QHBoxLayout()
+        header_layout.setAlignment(Qt.AlignCenter)
+        self.nodes_button = QPushButton("Nodes")
+        self.history_button = QPushButton("History")
+        self.nodes_button.setCheckable(True)
+        self.history_button.setCheckable(True)
+        self.nodes_button.setChecked(True)  # Default to nodes view
+        self.update_button_styles()
+        self.nodes_button.clicked.connect(self.show_nodes)
+        self.history_button.clicked.connect(self.show_history)
+        header_layout.addWidget(self.nodes_button)
+        header_layout.addWidget(self.history_button)
+        header.setLayout(header_layout)
+        main_layout.addWidget(header)
 
-        # Add navigation buttons to the menu bar
-        nodes_button = QPushButton("Nodes")
-        history_button = QPushButton("History")
-        menu_layout.addWidget(nodes_button)
-        menu_layout.addWidget(history_button)
-
-        # Create a stacked widget for the right pane
+        # Create a stacked widget for the main content
         self.stacked_widget = QStackedWidget()
 
         # Create the node status table
         self.table_widget = QTableWidget(len(nodes), 3)
         self.table_widget.setHorizontalHeaderLabels(["Node", "Status", "Last Checked"])
         self.table_widget.setSortingEnabled(False)  # Disable sorting
+
+        # Hide row and column headers
+        self.table_widget.verticalHeader().setVisible(False)
+        self.table_widget.horizontalHeader().setVisible(False)
 
         # Initialize the table
         for row, node in enumerate(self.nodes):
@@ -62,22 +70,51 @@ class NetworkMonitorApp(QMainWindow):
         self.history_list = QListWidget()
         self.stacked_widget.addWidget(self.history_list)
 
-        # Connect buttons to change the stacked widget's current widget
-        nodes_button.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.table_widget))
-        history_button.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.history_list))
+        # Add the stacked widget to the main layout
+        main_layout.addWidget(self.stacked_widget)
 
-        # Add the stacked widget to the splitter
-        splitter.addWidget(self.stacked_widget)
+        # Footer with file path and change button
+        footer = QWidget()
+        footer_layout = QVBoxLayout()
+        footer_layout.setAlignment(Qt.AlignCenter)
+        self.file_label = QLabel(f"Monitoring file: {self.file_path}")
+        change_file_button = QPushButton("Change File")
+        change_file_button.clicked.connect(self.change_file)
+        footer_layout.addWidget(self.file_label)
+        footer_layout.addWidget(change_file_button)
+        footer.setLayout(footer_layout)
+        main_layout.addWidget(footer)
 
-        # Set the splitter sizes
-        splitter.setSizes([1, 2])
-
-        self.setCentralWidget(splitter)
+        # Set the main layout
+        container = QWidget()
+        container.setLayout(main_layout)
+        self.setCentralWidget(container)
 
         # Set up a timer to update the dashboard
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_dashboard)
         self.timer.start(1000)  # Update every 1 second
+
+    def show_nodes(self):
+        """Show the nodes view."""
+        self.stacked_widget.setCurrentWidget(self.table_widget)
+        self.nodes_button.setChecked(True)
+        self.history_button.setChecked(False)
+        self.update_button_styles()
+
+    def show_history(self):
+        """Show the history view."""
+        self.stacked_widget.setCurrentWidget(self.history_list)
+        self.nodes_button.setChecked(False)
+        self.history_button.setChecked(True)
+        self.update_button_styles()
+
+    def update_button_styles(self):
+        """Update the styles of the header buttons to indicate the active view."""
+        active_style = "background-color: lightblue; font-weight: bold;"
+        inactive_style = "background-color: none; font-weight: normal;"
+        self.nodes_button.setStyleSheet(active_style if self.nodes_button.isChecked() else inactive_style)
+        self.history_button.setStyleSheet(active_style if self.history_button.isChecked() else inactive_style)
 
     def start_node_tasks(self):
         """Start asynchronous tasks for each node."""
@@ -108,8 +145,10 @@ class NetworkMonitorApp(QMainWindow):
             timestamp_item = self.table_widget.item(row, 2)
             timestamp_item.setText(timestamp)
 
-            # Update history list
-            self.history_list.addItem(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {node} is {status_text}")
+            # Update history list only if status changes
+            if self.previous_status[node] != status_text:
+                self.history_list.addItem(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Node {node} has {'come online' if status_text == 'Online' else 'gone offline'} at {timestamp}")
+                self.previous_status[node] = status_text
 
             await asyncio.sleep(5)  # Check every 5 seconds
 
@@ -141,3 +180,34 @@ class NetworkMonitorApp(QMainWindow):
                 self.table_widget.setItem(row, 2, timestamp_item)
 
             timestamp_item.setText(timestamp)
+
+    def change_file(self):
+        """Open a file dialog to change the monitored file."""
+        new_file_path, _ = QFileDialog.getOpenFileName(self, "Select Node File", "", "Text Files (*.txt);;All Files (*)")
+        if new_file_path:
+            self.file_path = new_file_path
+            self.file_label.setText(f"Monitoring file: {self.file_path}")
+            # Reload nodes from the new file
+            self.nodes = sorted(read_node_file(self.file_path))
+            self.node_status = {node: ("Checking...", "-") for node in self.nodes}
+            self.previous_status = {node: None for node in self.nodes}
+            self.node_loggers = {node: setup_node_logging(node) for node in self.nodes}
+            self.table_widget.setRowCount(len(self.nodes))
+            for row, node in enumerate(self.nodes):
+                node_item = QTableWidgetItem(node)
+                node_item.setFlags(node_item.flags() & ~Qt.ItemIsEditable)
+                self.table_widget.setItem(row, 0, node_item)
+
+                status_item = QTableWidgetItem("Checking...")
+                status_item.setForeground(QColor("yellow"))
+                status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)
+                self.table_widget.setItem(row, 1, status_item)
+
+                timestamp_item = QTableWidgetItem("-")
+                timestamp_item.setFlags(timestamp_item.flags() & ~Qt.ItemIsEditable)
+                self.table_widget.setItem(row, 2, timestamp_item)
+
+            # Restart node tasks
+            for task in self.node_tasks:
+                task.cancel()
+            self.start_node_tasks()
