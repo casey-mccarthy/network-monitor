@@ -9,6 +9,7 @@ from network.node import NodeData
 from network.mapper import draw_network_topology
 from gui.matplotlib_widget import DynamicNetworkMap
 
+
 class NetworkMonitorApp(QMainWindow):
     def __init__(self, nodes: list[NodeData], file_path: str):
         super().__init__()
@@ -173,7 +174,8 @@ class NetworkMonitorApp(QMainWindow):
 
             # Update the node's online status using a boolean
             node.is_online = (status_text == "Online")
-            print(f"Updated node {node.ip} to {'online' if node.is_online else 'offline'}")  # Debug statement
+            node_logger = self.node_loggers[node.ip]
+            node_logger.debug(f"Updated node {node.ip} to {'online' if node.is_online else 'offline'}")  # Debug statement
 
         # Emit the signal to update the map
         self.map_widget.update_map_signal.emit()

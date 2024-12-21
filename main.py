@@ -11,7 +11,7 @@ def main(file_path: str = "nodes.txt"):
     """Main function to set up and run the network monitor."""
     nodes = read_node_file(file_path)
     if not nodes:
-        print("No nodes to monitor. Please check your node file.")
+        logging.error("No nodes to monitor. Please check your node file.")
         return
 
     app = QApplication(sys.argv)
@@ -36,4 +36,4 @@ if __name__ == "__main__":
         main(node_file_path)
     except KeyboardInterrupt:
         logging.info("Network Monitor Stopped.")
-        print("Network Monitor Stopped.")
+        logging.info("Network Monitor Stopped.")

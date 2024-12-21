@@ -7,6 +7,10 @@ import PIL
 from network.checker import read_node_file
 import matplotlib.pyplot as plt
 from network.node import NodeData
+import logging
+
+# Initialize a logger for this module
+logger = logging.getLogger(__name__)
 
 class DynamicNetworkMap(QWidget):
     update_map_signal = Signal()
@@ -35,13 +39,12 @@ class DynamicNetworkMap(QWidget):
 
     def draw_dynamic_map(self):
 
-
         G = nx.Graph()
 
         for node in self.nodes:
             device_type = node.device_type.lower()
             G.add_node(node.ip, device_type=device_type, is_online=node.is_online)
-            print(f"Node {node.ip} is {'online' if node.is_online else 'offline'} in draw")  # Debug statement
+            logger.debug(f"Node {node.ip} is {'online' if node.is_online else 'offline'} in draw")
 
         for node in self.nodes:
             for connected_node in node.connections:
@@ -68,7 +71,7 @@ class DynamicNetworkMap(QWidget):
 
             # Determine box color based on online status
             box_color = "lightgreen" if is_online else "lightcoral"
-            print(f"Drawing node {n} with color {box_color}")  # Debug statement
+            logger.debug(f"Drawing node {n} with color {box_color}")
 
             # Add the IP address inside the box
             text = ax.text(
