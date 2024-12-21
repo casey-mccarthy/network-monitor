@@ -1,10 +1,12 @@
+import sys
 import asyncio
 import subprocess
 import time
 import logging
-from rich.live import Live
-from rich.table import Table
-from rich.console import Console
+from PySide6.QtWidgets import QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QColor
+from qasync import QEventLoop
 
 # Configure logging to file
 logging.basicConfig(
@@ -42,71 +44,89 @@ def read_node_file(file_path: str) -> list[str]:
         logging.error(f"Error: The file {file_path} was not found.")
         return []
 
-def create_dashboard(nodes: list[str]) -> Table:
-    """Create an initial dashboard table for the network monitor."""
-    table = Table(title="Network Monitor Dashboard")
-    table.add_column("Node", justify="left", style="cyan", no_wrap=True)
-    table.add_column("Status", justify="center", style="bold")
-    table.add_column("Last Checked", justify="right", style="dim")
-    
-    # Initialize the table with nodes and default status
-    for node in nodes:
-        table.add_row(node, "[yellow]Checking...", "-")
-    
-    return table
+class NetworkMonitorApp(QMainWindow):
+    def __init__(self, nodes: list[str]):
+        super().__init__()
+        self.setWindowTitle("Network Monitor")
+        self.nodes = nodes
+        self.node_status = {node: ("Checking...", "-") for node in nodes}
 
-async def update_dashboard(live: Live, nodes: list[str]) -> None:
-    """Update the dashboard with the status of each node."""
-    node_status = {node: ("[yellow]Checking...", "-") for node in nodes}
-    
-    while True:
+        # Set up the table widget
+        self.table_widget = QTableWidget(len(nodes), 3)
+        self.table_widget.setHorizontalHeaderLabels(["Node", "Status", "Last Checked"])
+
+        # Initialize the table
+        for row, node in enumerate(nodes):
+            self.table_widget.setItem(row, 0, QTableWidgetItem(node))
+            self.table_widget.setItem(row, 1, QTableWidgetItem("Checking..."))
+            self.table_widget.setItem(row, 2, QTableWidgetItem("-"))
+
+        # Set up the layout with margins
+        layout = QVBoxLayout()
+        layout.addWidget(self.table_widget)
+        layout.setContentsMargins(10, 10, 10, 10)  # Add a buffer around the window
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+        # Set up a timer to update the dashboard
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.schedule_update_dashboard)
+        self.timer.start(5000)  # Update every 5 seconds
+
+    def schedule_update_dashboard(self):
+        """Schedule the update_dashboard coroutine."""
+        asyncio.create_task(self.update_dashboard())
+
+    async def update_dashboard(self):
         logging.info("Updating dashboard...")
-        tasks = {node: ping(node) for node in nodes}
-        
-        for node, task in tasks.items():
+        tasks = {node: ping(node) for node in self.nodes}
+
+        for row, (node, task) in enumerate(tasks.items()):
             status = await task
-            status_text = "[green]Online" if status else "[red]Offline"
+            status_text = "Online" if status else "Offline"
             timestamp = time.strftime("%H:%M:%S")
-            node_status[node] = (status_text, timestamp)
-        
-        table = Table(title="Network Monitor Dashboard")
-        table.add_column("Node", justify="left", style="cyan", no_wrap=True)
-        table.add_column("Status", justify="center", style="bold")
-        table.add_column("Last Checked", justify="right", style="dim")
-        
-        for node in nodes:
-            status_text, last_checked = node_status[node]
-            table.add_row(node, status_text, last_checked)
-        
-        live.update(table)
+            self.node_status[node] = (status_text, timestamp)
+
+            # Update the table widget with color coding
+            status_item = QTableWidgetItem(status_text)
+            if status:
+                status_item.setForeground(QColor("green"))
+            else:
+                status_item.setForeground(QColor("red"))
+
+            self.table_widget.setItem(row, 1, status_item)
+            self.table_widget.setItem(row, 2, QTableWidgetItem(timestamp))
+
         logging.info("Dashboard updated.")
-        await asyncio.sleep(5)
 
 async def main(file_path: str):
     """Main function to set up and run the network monitor."""
-    console = Console()
     nodes = read_node_file(file_path)
-    
     if not nodes:
-        console.print("[bold red]No nodes to monitor. Please check your node file.")
+        print("No nodes to monitor. Please check your node file.")
         return
-    
-    console.print(f"[bold green]Starting network monitor for {len(nodes)} nodes.")
-    table = create_dashboard(nodes)
-    
-    with Live(table, refresh_per_second=1) as live:
-        await update_dashboard(live, nodes)
+
+    app = QApplication(sys.argv)
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+
+    window = NetworkMonitorApp(nodes)
+    window.show()
+
+    with loop:
+        await loop.run_forever()
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) < 2:
         print("Usage: python network_monitor.py <path_to_node_file>")
         sys.exit(1)
-    
+
     node_file_path = sys.argv[1]
     try:
         logging.info("Starting network monitor...")
         asyncio.run(main(node_file_path))
     except KeyboardInterrupt:
         logging.info("Network Monitor Stopped.")
-        print("\n[bold red]Network Monitor Stopped.")
+        print("Network Monitor Stopped.")
