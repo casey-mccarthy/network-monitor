@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import subprocess
-from network.node import Node  # Import Node from the new module
+from network.node import NodeData  # Import NodeData from the new module
 
 async def ping(host: str) -> bool:
     """Ping a host to check if it is reachable."""
@@ -20,7 +20,7 @@ async def ping(host: str) -> bool:
         logging.error(f"Error pinging {host}: {e}")
         return False
 
-def read_node_file(file_path: str) -> list[Node]:
+def read_node_file(file_path: str) -> list[NodeData]:
     """Read a file containing a list of IP addresses, device types, and connections."""
     nodes = {}
     connections = []
@@ -36,7 +36,7 @@ def read_node_file(file_path: str) -> list[Node]:
                 if len(parts) == 2:
                     ip, device_type = parts
                     if device_type.lower() in ["router", "switch", "pc"]:
-                        nodes[ip] = Node(ip, device_type)
+                        nodes[ip] = NodeData(ip, device_type)
                     else:
                         connections.append(parts)
                 elif len(parts) == 2:

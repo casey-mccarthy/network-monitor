@@ -5,12 +5,12 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from network.checker import ping, read_node_file
 from network.logger import setup_node_logging
-from network.node import Node
+from network.node import NodeData
 from network.mapper import draw_network_topology
 from gui.matplotlib_widget import DynamicNetworkMap
 
 class NetworkMonitorApp(QMainWindow):
-    def __init__(self, nodes: list[Node], file_path: str):
+    def __init__(self, nodes: list[NodeData], file_path: str):
         super().__init__()
         self.setWindowTitle("Network Monitor")
         self.nodes = sorted(nodes, key=lambda node: node.ip)
@@ -77,7 +77,7 @@ class NetworkMonitorApp(QMainWindow):
         self.stacked_widget.addWidget(self.history_list)
 
         # Add the DynamicNetworkMap widget for the network map
-        self.map_widget = DynamicNetworkMap(self.file_path)
+        self.map_widget = DynamicNetworkMap(self.nodes, self.file_path)
         self.stacked_widget.addWidget(self.map_widget)
 
         main_layout.addWidget(self.stacked_widget)
@@ -134,7 +134,7 @@ class NetworkMonitorApp(QMainWindow):
         """Start asynchronous tasks for each node."""
         self.node_tasks = [asyncio.create_task(self.check_node(node, row)) for row, node in enumerate(self.nodes)]
 
-    async def check_node(self, node: Node, row: int):
+    async def check_node(self, node: NodeData, row: int):
         """Check the status of a node and update the table."""
         while True:
             status = await ping(node.ip)
@@ -171,29 +171,12 @@ class NetworkMonitorApp(QMainWindow):
         for row, node in enumerate(self.nodes):
             status_text, timestamp = self.node_status[node.ip]
 
-            # Ensure the status item exists
-            status_item = self.table_widget.item(row, 1)
-            if status_item is None:
-                status_item = QTableWidgetItem()
-                status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
-                self.table_widget.setItem(row, 1, status_item)
+            # Update the node's online status using a boolean
+            node.is_online = (status_text == "Online")
+            print(f"Updated node {node.ip} to {'online' if node.is_online else 'offline'}")  # Debug statement
 
-            status_item.setText(status_text)
-            if status_text == "Online":
-                status_item.setForeground(QColor("green"))
-            elif status_text == "Offline":
-                status_item.setForeground(QColor("red"))
-            else:
-                status_item.setForeground(QColor("yellow"))
-
-            # Ensure the timestamp item exists
-            timestamp_item = self.table_widget.item(row, 2)
-            if timestamp_item is None:
-                timestamp_item = QTableWidgetItem()
-                timestamp_item.setFlags(timestamp_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
-                self.table_widget.setItem(row, 2, timestamp_item)
-
-            timestamp_item.setText(timestamp)
+        # Emit the signal to update the map
+        self.map_widget.update_map_signal.emit()
 
     def change_file(self):
         """Open a file dialog to change the monitored file."""

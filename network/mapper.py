@@ -1,9 +1,9 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import PIL
-from network.node import Node
+from network.node import NodeData
 
-def draw_network_topology(nodes: list[Node]):
+def draw_network_topology(nodes: list[NodeData]):
     """Draw a network topology using networkx and matplotlib."""
     icons = {
         "router": "icons/router_black_144x144.png",
