@@ -1,6 +1,6 @@
 import time
 import asyncio
-from PySide6.QtWidgets import QMainWindow, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QSplitter, QLabel, QFrame
+from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QLabel, QFrame, QPushButton
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
 from network.checker import ping
@@ -23,6 +23,12 @@ class NetworkMonitorApp(QMainWindow):
         menu_layout = QVBoxLayout()
         menu_bar.setLayout(menu_layout)
         splitter.addWidget(menu_bar)
+
+        # Add placeholder buttons to the menu bar
+        nodes_button = QPushButton("Nodes")
+        history_button = QPushButton("History")
+        menu_layout.addWidget(nodes_button)
+        menu_layout.addWidget(history_button)
 
         # Create the node status area (right 2/3)
         node_area = QWidget()
