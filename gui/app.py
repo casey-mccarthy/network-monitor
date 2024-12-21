@@ -4,6 +4,7 @@ from PySide6.QtGui import QColor
 import asyncio
 from network.checker import ping
 from network.logger import setup_node_logging
+import time
 
 class NetworkMonitorApp(QMainWindow):
     def __init__(self, nodes: list[str]):
