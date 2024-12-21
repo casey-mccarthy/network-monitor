@@ -1,7 +1,6 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, QEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import networkx as nx
 import PIL
@@ -17,11 +16,7 @@ class DynamicNetworkMap(QWidget):
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
         
-        # Add the navigation toolbar
-        self.toolbar = NavigationToolbar(self.canvas, self)
-
         layout = QVBoxLayout()
-        layout.addWidget(self.toolbar)  # Add the toolbar to the layout
         layout.addWidget(self.canvas)
         self.setLayout(layout)
         self.file_path = file_path
@@ -32,6 +27,12 @@ class DynamicNetworkMap(QWidget):
 
         self.draw_dynamic_map()
 
+    def resizeEvent(self, event: QEvent):
+        """Handle the resize event to clear and redraw the map."""
+        self.figure.clear()  # Clear the figure to remove artifacts
+        self.draw_dynamic_map()  # Redraw the map
+        super().resizeEvent(event)  # Call the base class implementation
+
     def draw_dynamic_map(self):
         # Define colors for each device type
         colors = {
@@ -40,10 +41,9 @@ class DynamicNetworkMap(QWidget):
             "pc": "green",
         }
 
-        # Use the existing nodes list from the application
         G = nx.Graph()
 
-        for node in self.nodes:  # Assuming self.nodes is the shared list
+        for node in self.nodes:
             device_type = node.device_type.lower()
             G.add_node(node.ip, device_type=device_type, is_online=node.is_online)
             print(f"Node {node.ip} is {'online' if node.is_online else 'offline'} in draw")  # Debug statement
