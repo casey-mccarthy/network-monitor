@@ -4,7 +4,11 @@ import PIL
 from network.node import NodeData
 
 def draw_network_topology(nodes: list[NodeData]):
-    """Draw a network topology using networkx and matplotlib."""
+    """Draw a network topology using networkx and matplotlib.
+
+    Args:
+        nodes (list[NodeData]): List of nodes to include in the topology.
+    """
     icons = {
         "router": "icons/router_black_144x144.png",
         "switch": "icons/switch_black_144x144.png",

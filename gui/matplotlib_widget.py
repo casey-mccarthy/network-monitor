@@ -16,6 +16,13 @@ class DynamicNetworkMap(QWidget):
     update_map_signal = Signal()
 
     def __init__(self, nodes: list[NodeData], file_path: str, parent=None):
+        """Initialize the DynamicNetworkMap widget.
+
+        Args:
+            nodes (list[NodeData]): List of nodes to display on the map.
+            file_path (str): Path to the node file.
+            parent (QWidget, optional): Parent widget. Defaults to None.
+        """
         super().__init__(parent)
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -38,7 +45,7 @@ class DynamicNetworkMap(QWidget):
         super().resizeEvent(event)  # Call the base class implementation
 
     def draw_dynamic_map(self):
-
+        """Draw the dynamic network map."""
         G = nx.Graph()
 
         for node in self.nodes:
@@ -50,14 +57,21 @@ class DynamicNetworkMap(QWidget):
             for connected_node in node.connections:
                 G.add_edge(node.ip, connected_node.ip)
 
-        pos = nx.spring_layout(G, seed=1734289230)
+        # Adjust the spring layout to ensure spacing
+        pos = nx.spring_layout(G, seed=1734289230, k=0.3, iterations=50)
         ax = self.figure.add_subplot(111)
         ax.set_axis_off()
 
+        # Set the background color of the figure and axes to black
+        self.figure.patch.set_facecolor('black')
+        ax.set_facecolor('black')
+
+        # Draw edges with white color
         nx.draw_networkx_edges(
             G,
             pos=pos,
             ax=ax,
+            edge_color='white',
             arrows=True,
             arrowstyle="-",
             min_source_margin=15,
@@ -73,9 +87,9 @@ class DynamicNetworkMap(QWidget):
             box_color = "lightgreen" if is_online else "lightcoral"
             logger.debug(f"Drawing node {n} with color {box_color}")
 
-            # Add the IP address inside the box
+            # Add the IP address inside the box with increased font size and bold weight
             text = ax.text(
-                x, y, n, fontsize=6, ha='center', va='center', transform=ax.transData
+                x, y, n, fontsize=6, fontweight='bold', ha='center', va='center', color='black', transform=ax.transData
             )
 
             # Get the bounding box of the text
@@ -91,7 +105,8 @@ class DynamicNetworkMap(QWidget):
                 (bbox_data.x0 - padding, bbox_data.y0 - padding),
                 bbox_data.width + 2 * padding,
                 bbox_data.height + 2 * padding,
-                color=box_color,
+                edgecolor='black',  # Set border color to white
+                facecolor=box_color,
                 transform=ax.transData,
                 zorder=text.get_zorder() - 1  # Ensure the rectangle is below the text
             )

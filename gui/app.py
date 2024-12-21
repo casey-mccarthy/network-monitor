@@ -12,6 +12,12 @@ from gui.matplotlib_widget import DynamicNetworkMap
 
 class NetworkMonitorApp(QMainWindow):
     def __init__(self, nodes: list[NodeData], file_path: str):
+        """Initialize the NetworkMonitorApp.
+
+        Args:
+            nodes (list[NodeData]): List of nodes to monitor.
+            file_path (str): Path to the node file.
+        """
         super().__init__()
         self.setWindowTitle("Network Monitor")
         self.nodes = sorted(nodes, key=lambda node: node.ip)
@@ -104,6 +110,7 @@ class NetworkMonitorApp(QMainWindow):
         self.timer.start(1000)
 
     def show_nodes(self):
+        """Display the nodes view."""
         self.stacked_widget.setCurrentWidget(self.table_widget)
         self.nodes_button.setChecked(True)
         self.history_button.setChecked(False)
@@ -111,6 +118,7 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def show_history(self):
+        """Display the history view."""
         self.stacked_widget.setCurrentWidget(self.history_list)
         self.nodes_button.setChecked(False)
         self.history_button.setChecked(True)
@@ -118,6 +126,7 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def show_map(self):
+        """Display the map view."""
         self.stacked_widget.setCurrentWidget(self.map_widget)
         self.nodes_button.setChecked(False)
         self.history_button.setChecked(False)
@@ -125,6 +134,7 @@ class NetworkMonitorApp(QMainWindow):
         self.update_button_styles()
 
     def update_button_styles(self):
+        """Update the styles of the menu buttons."""
         active_style = "background-color: lightblue; font-weight: bold;"
         inactive_style = "background-color: none; font-weight: normal;"
         self.nodes_button.setStyleSheet(active_style if self.nodes_button.isChecked() else inactive_style)
@@ -136,7 +146,12 @@ class NetworkMonitorApp(QMainWindow):
         self.node_tasks = [asyncio.create_task(self.check_node(node, row)) for row, node in enumerate(self.nodes)]
 
     async def check_node(self, node: NodeData, row: int):
-        """Check the status of a node and update the table."""
+        """Check the status of a node and update the table.
+
+        Args:
+            node (NodeData): The node to check.
+            row (int): The row index in the table.
+        """
         while True:
             status = await ping(node.ip)
             status_text = "Online" if status else "Offline"
@@ -177,7 +192,6 @@ class NetworkMonitorApp(QMainWindow):
             node_logger = self.node_loggers[node.ip]
             node_logger.debug(f"Updated node {node.ip} to {'online' if node.is_online else 'offline'}")  # Debug statement
 
-        # Emit the signal to update the map
         self.map_widget.update_map_signal.emit()
 
     def change_file(self):

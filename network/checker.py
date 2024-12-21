@@ -4,7 +4,14 @@ import subprocess
 from network.node import NodeData  # Import NodeData from the new module
 
 async def ping(host: str) -> bool:
-    """Ping a host to check if it is reachable."""
+    """Ping a host to check if it is reachable.
+
+    Args:
+        host (str): The IP address or hostname to ping.
+
+    Returns:
+        bool: True if the host is reachable, False otherwise.
+    """
     try:
         logging.info(f"Pinging {host}...")
         result = await asyncio.create_subprocess_shell(
@@ -21,7 +28,14 @@ async def ping(host: str) -> bool:
         return False
 
 def read_node_file(file_path: str) -> list[NodeData]:
-    """Read a file containing a list of IP addresses, device types, and connections."""
+    """Read a file containing a list of IP addresses, device types, and connections.
+
+    Args:
+        file_path (str): The path to the node file.
+
+    Returns:
+        list[NodeData]: A list of NodeData objects representing the nodes.
+    """
     nodes = {}
     connections = []
 

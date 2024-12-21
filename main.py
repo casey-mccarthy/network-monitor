@@ -8,7 +8,11 @@ from network.logger import setup_logging
 from network.checker import read_node_file
 
 def main(file_path: str = "nodes.txt"):
-    """Main function to set up and run the network monitor."""
+    """Main function to set up and run the network monitor.
+
+    Args:
+        file_path (str): The path to the node file.
+    """
     nodes = read_node_file(file_path)
     if not nodes:
         logging.error("No nodes to monitor. Please check your node file.")
@@ -35,5 +39,4 @@ if __name__ == "__main__":
         node_file_path = sys.argv[1] if len(sys.argv) > 1 else "nodes.txt"
         main(node_file_path)
     except KeyboardInterrupt:
-        logging.info("Network Monitor Stopped.")
         logging.info("Network Monitor Stopped.")

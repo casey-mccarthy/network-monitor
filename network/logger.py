@@ -12,8 +12,15 @@ def setup_logging():
         handlers=[logging.FileHandler("logs/network_monitor.log", mode='a')]
     )
 
-def setup_node_logging(node: str):
-    """Set up logging for a specific node."""
+def setup_node_logging(node: str) -> logging.Logger:
+    """Set up logging for a specific node.
+
+    Args:
+        node (str): The IP address of the node.
+
+    Returns:
+        logging.Logger: A logger for the specified node.
+    """
     node_log_file = f"logs/{node}.log"
     node_logger = logging.getLogger(node)
     node_logger.setLevel(logging.INFO)
